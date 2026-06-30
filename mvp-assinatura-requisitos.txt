@@ -1,0 +1,49 @@
+Login ADMIN
+admin@mvpassinatura.com
+admin123
+
+Login USER
+joao@exemplo.com
+joao123
+
+Login USER
+maria@exemplo.com
+maria123
+
+Acessar banco
+docker exec -it mvp-assinatura psql -U admin -d mvp-assinatura
+
+- Resend API_KEY
+- ASAAS API_KEY
+- ASAAS TOKEN
+- Webhook URL
+
+- Envia notificação/e-mail ao líder para cadastrar credenciais. Fazer funcionar o sino com o popup de notificações.
+
+- O líder consegue remover membros (???)
+
+- Bloqueio de membros por inadimplência.
+
+
+
+PROJETO 01 – PLATAFORMA DE COMPARTILHAMENTO DE ASSINATURAS 
+Desenvolvimento de um MVP (Minimum Viable Product) funcional de uma plataforma de 
+compartilhamento de assinaturas digitais, baseada em modelo de negócio semelhante ao de 
+plataformas de compartilhamento de assinaturas existentes no mercado, contemplando: 
+
+OK - a) Cadastro e autenticação de usuários; 
+OK - b) Recuperação de senha; 
+OK - c) Área do usuário; 
+OK - d) Cadastro, criação e gerenciamento de grupos de assinatura; 
+OK - e) Controle de vagas disponíveis e participantes dos grupos; 
+OK - f) Controle de membros ativos; 
+g) Sistema de cobrança recorrente; 
+OK - h) Integração com gateway de pagamento, preferencialmente Asaas; 
+OK - i) Área do líder do grupo; 
+OK - j) Área dos participantes; 
+OK - k) Bloqueio automático em caso de inadimplência; 
+OK - l) Painel administrativo; 
+pág. 1 
+OK - m) Dashboard gerencial para acompanhamento da operação.
+
+

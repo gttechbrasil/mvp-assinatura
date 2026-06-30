@@ -3,12 +3,12 @@ version: "3.8"
 services:
   postgres:
     image: postgres:16
-    container_name: assistent-db
+    container_name: mvp-assinatura
     restart: always
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: 12345
-      POSTGRES_DB: assistent
+      POSTGRES_DB: mvp-assinatura
     ports:
       - "5432:5432"
     volumes:

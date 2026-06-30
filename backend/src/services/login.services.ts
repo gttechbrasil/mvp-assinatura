@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { AppError } from "../errors/AppError.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 interface LoginRequest {
   email: string;
@@ -29,6 +30,26 @@ export class LoginServices {
       throw new AppError("E-mail ou senha inválidos", 401);
     }
 
-    return user;
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      throw new AppError("Configuração de autenticação inválida", 500);
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      secret,
+      { expiresIn: "7d" },
+    );
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+      },
+      accessToken,
+    };
   }
 }

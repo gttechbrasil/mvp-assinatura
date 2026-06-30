@@ -6,13 +6,231 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id            String @id @default(uuid())
-  email         String @unique
-  password      String
+// ─── Enums ───────────────────────────────────────────────────────────────────
 
-  created_at    DateTime @default(now()) @map("created_at")
-  updated_at    DateTime @updatedAt
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  PENDING_PAYMENT
+  PENDING_CREDENTIALS
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  name       String?
+  phone      String?
+  document   String?  @unique
+  avatarUrl  String?  @map("avatar_url") @db.Text
+  role       String   @default("USER")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt
+
+  passwordResets PasswordReset[]
+  ownedGroups    SubscriptionGroup[]
+  memberships    GroupMember[]
+  groupViews     GroupView[]
+  notifications  Notification[]
+  
+  asaasCustomerId String?            @map("asaas_customer_id")
+  wallet           Wallet?
+  withdrawals      WithdrawalRequest[]
 
   @@map("users")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  code      String
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  groups    SubscriptionGroup[]
+  services  PlatformService[]
+
+  @@map("categories")
+}
+
+model PlatformService {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  categoryId  String   @map("category_id")
+  icon        String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("platform_services")
+}
+
+model SubscriptionGroup {
+  id           String      @id @default(uuid())
+  name         String
+  description  String?
+  service      String
+  maxSlots     Int         @map("max_slots")
+  pricePerSlot Decimal     @map("price_per_slot") @db.Decimal(10, 2)
+  status       GroupStatus @default(ACTIVE)
+  ownerId      String      @map("owner_id")
+  categoryId   String?     @map("category_id")
+  credentials  String?     @db.Text
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  members  GroupMember[]
+  invites  GroupInvite[]
+  views    GroupView[]
+
+  @@map("subscription_groups")
+}
+
+model GroupMember {
+  id                String       @id @default(uuid())
+  groupId           String       @map("group_id")
+  userId            String       @map("user_id")
+  status            MemberStatus @default(ACTIVE)
+  joinedAt          DateTime     @default(now()) @map("joined_at")
+  nextBillingDate   DateTime?    @map("next_billing_date")
+  lastBillingDate   DateTime?    @map("last_billing_date")
+  escrowReleasedAt  DateTime?    @map("escrow_released_at")
+
+  group SubscriptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupInvite {
+  id        String    @id @default(uuid())
+  groupId   String    @map("group_id")
+  email     String?
+  token     String    @unique @default(uuid())
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  group SubscriptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("group_invites")
+}
+
+model GroupView {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  groupId  String   @map("group_id")
+  viewedAt DateTime @default(now()) @updatedAt @map("viewed_at")
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group SubscriptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_views")
+}
+
+// ─── Modelos Financeiros / Asaas ─────────────────────────────────────────────
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  balance   Decimal  @default(0.00) @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id             String            @id @default(uuid())
+  walletId       String            @map("wallet_id")
+  amount         Decimal           @db.Decimal(10, 2)
+  type           TransactionType
+  status         TransactionStatus @default(CONFIRMED)
+  description    String
+  asaasPaymentId String?           @map("asaas_payment_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  @@map("transactions")
+}
+
+model WithdrawalRequest {
+  id              String           @id @default(uuid())
+  userId          String           @map("user_id")
+  amount          Decimal          @db.Decimal(10, 2)
+  pixKey          String           @map("pix_key")
+  status          WithdrawalStatus @default(PENDING)
+  asaasTransferId String?          @map("asaas_transfer_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawal_requests")
+}
+
+// ─── Notificações ────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  INFO
+  URGENT
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String           @db.Text
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  link      String?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
